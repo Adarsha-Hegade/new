@@ -5,6 +5,9 @@ import { toast } from 'react-hot-toast';
 import { setCredentials } from '../../store/slices/authSlice';
 import useForm from '../../hooks/useForm';
 import { validateSignupForm } from '../../utils/validation';
+import { signUp } from '../../lib/auth';
+import FormInput from '../common/FormInput';
+import FormSelect from '../common/FormSelect';
 
 export default function SignupForm() {
   const dispatch = useDispatch();
@@ -27,18 +30,24 @@ export default function SignupForm() {
     if (!isValid) return;
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values)
+      const { user, isAdmin } = await signUp({
+        email: values.email,
+        password: values.password,
+        username: values.username,
+        name: values.name,
+        phoneNumber: values.phoneNumber
       });
 
-      if (!response.ok) throw new Error('Signup failed');
+      dispatch(setCredentials({ 
+        user: {
+          ...user,
+          role: isAdmin ? 'admin' : 'user'
+        }, 
+        token: user.session?.access_token 
+      }));
 
-      const data = await response.json();
-      dispatch(setCredentials(data));
       toast.success('Account created successfully');
-      navigate('/dashboard');
+      navigate(isAdmin ? '/admin' : '/dashboard');
     } catch (error) {
       toast.error('Signup failed. Please try again.');
     }
@@ -47,115 +56,73 @@ export default function SignupForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-            Username
-          </label>
-          <input
-            id="username"
-            name="username"
-            type="text"
-            required
-            value={values.username}
-            onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-          {errors.username && (
-            <p className="mt-1 text-sm text-red-600">{errors.username}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-            Full Name
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            required
-            value={values.name}
-            onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-          {errors.name && (
-            <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          value={values.email}
+        <FormInput
+          id="username"
+          name="username"
+          type="text"
+          label="Username"
+          value={values.username}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          error={errors.username}
+          required
         />
-        {errors.email && (
-          <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-        )}
+
+        <FormInput
+          id="name"
+          name="name"
+          type="text"
+          label="Full Name"
+          value={values.name}
+          onChange={handleChange}
+          error={errors.name}
+          required
+        />
       </div>
 
-      <div>
-        <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
-          Phone Number
-        </label>
-        <input
-          id="phoneNumber"
-          name="phoneNumber"
-          type="tel"
-          required
-          value={values.phoneNumber}
-          onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        />
-        {errors.phoneNumber && (
-          <p className="mt-1 text-sm text-red-600">{errors.phoneNumber}</p>
-        )}
-      </div>
+      <FormInput
+        id="email"
+        name="email"
+        type="email"
+        label="Email"
+        value={values.email}
+        onChange={handleChange}
+        error={errors.email}
+        required
+      />
+
+      <FormInput
+        id="phoneNumber"
+        name="phoneNumber"
+        type="tel"
+        label="Phone Number"
+        value={values.phoneNumber}
+        onChange={handleChange}
+        error={errors.phoneNumber}
+        required
+      />
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            value={values.password}
-            onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-          {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-          )}
-        </div>
+        <FormInput
+          id="password"
+          name="password"
+          type="password"
+          label="Password"
+          value={values.password}
+          onChange={handleChange}
+          error={errors.password}
+          required
+        />
 
-        <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-            Confirm Password
-          </label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            required
-            value={values.confirmPassword}
-            onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-          {errors.confirmPassword && (
-            <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-          )}
-        </div>
+        <FormInput
+          id="confirmPassword"
+          name="confirmPassword"
+          type="password"
+          label="Confirm Password"
+          value={values.confirmPassword}
+          onChange={handleChange}
+          error={errors.confirmPassword}
+          required
+        />
       </div>
 
       <button
