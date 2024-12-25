@@ -1,22 +1,48 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import SignupForm from '../components/auth/SignupForm';
-import { checkAdminExists } from '../lib/auth';
+import { checkAdminExists } from '../lib/auth/admin';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export default function SignupPage() {
   const [adminExists, setAdminExists] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const exists = await checkAdminExists();
-      setAdminExists(exists);
+      try {
+        const exists = await checkAdminExists();
+        setAdminExists(exists);
+      } catch (err) {
+        setError('Failed to check admin status');
+        setAdminExists(false);
+      }
     };
     checkAdmin();
   }, []);
 
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 text-blue-600 hover:text-blue-500"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (adminExists === null) {
-    return <LoadingSpinner />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   if (adminExists) {

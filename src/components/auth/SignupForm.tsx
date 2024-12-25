@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { setCredentials } from '../../store/slices/authSlice';
-import { authService } from '../../services/authService';
+import { signUp } from '../../lib/auth/signup';
 import FormInput from '../common/FormInput';
 import useForm from '../../hooks/useForm';
 
@@ -41,7 +41,7 @@ export default function SignupForm() {
 
     setIsLoading(true);
     try {
-      const { user, session } = await authService.signUp({
+      const { user, session } = await signUp({
         email: values.email,
         password: values.password,
         username: values.username,
@@ -54,11 +54,11 @@ export default function SignupForm() {
           user,
           token: session.access_token 
         }));
-        toast.success('Admin account created successfully');
+        toast.success('Account created successfully');
         navigate('/admin');
       }
     } catch (error: any) {
-      // Error is already handled by authService
+      toast.error(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +66,85 @@ export default function SignupForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Form inputs remain the same */}
+      <FormInput
+        label="Username"
+        id="username"
+        name="username"
+        type="text"
+        value={values.username}
+        onChange={handleChange}
+        error={errors.username}
+        disabled={isLoading}
+        required
+      />
+
+      <FormInput
+        label="Email"
+        id="email"
+        name="email"
+        type="email"
+        value={values.email}
+        onChange={handleChange}
+        error={errors.email}
+        disabled={isLoading}
+        required
+      />
+
+      <FormInput
+        label="Password"
+        id="password"
+        name="password"
+        type="password"
+        value={values.password}
+        onChange={handleChange}
+        error={errors.password}
+        disabled={isLoading}
+        required
+      />
+
+      <FormInput
+        label="Confirm Password"
+        id="confirmPassword"
+        name="confirmPassword"
+        type="password"
+        value={values.confirmPassword}
+        onChange={handleChange}
+        error={errors.confirmPassword}
+        disabled={isLoading}
+        required
+      />
+
+      <FormInput
+        label="Full Name"
+        id="name"
+        name="name"
+        type="text"
+        value={values.name}
+        onChange={handleChange}
+        error={errors.name}
+        disabled={isLoading}
+        required
+      />
+
+      <FormInput
+        label="Phone Number"
+        id="phoneNumber"
+        name="phoneNumber"
+        type="tel"
+        value={values.phoneNumber}
+        onChange={handleChange}
+        error={errors.phoneNumber}
+        disabled={isLoading}
+        required
+      />
+
+      <button
+        type="submit"
+        disabled={!isValid || isLoading}
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+      >
+        {isLoading ? 'Creating account...' : 'Create Account'}
+      </button>
     </form>
   );
 }
