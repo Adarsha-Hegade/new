@@ -1,20 +1,6 @@
 import { supabase } from './supabase';
 import { toast } from 'react-hot-toast';
 
-export async function isFirstUser(): Promise<boolean> {
-  try {
-    const { count, error } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true });
-    
-    if (error) throw error;
-    return count === 0;
-  } catch (error) {
-    console.error('Error checking first user:', error);
-    return false;
-  }
-}
-
 export async function signUp(data: {
   email: string;
   password: string;
@@ -24,20 +10,16 @@ export async function signUp(data: {
 }) {
   try {
     // Check if this is the first user
-    const isAdmin = await isFirstUser();
+    const { count } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true });
+    
+    const isAdmin = count === 0;
 
     // Sign up with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          username: data.username,
-          name: data.name,
-          phone_number: data.phoneNumber,
-          role: isAdmin ? 'admin' : 'user'
-        }
-      }
+      password: data.password
     });
 
     if (authError) throw authError;
@@ -55,29 +37,16 @@ export async function signUp(data: {
         role: isAdmin ? 'admin' : 'user'
       }]);
 
-    if (profileError) {
-      // If profile creation fails, clean up auth user
-      await supabase.auth.admin.deleteUser(authData.user.id);
-      throw profileError;
-    }
+    if (profileError) throw profileError;
 
     return { 
-      user: {
-        ...authData.user,
-        name: data.name,
-        username: data.username,
-        phoneNumber: data.phoneNumber,
-        role: isAdmin ? 'admin' : 'user'
-      },
-      isAdmin,
+      user: authData.user,
       session: authData.session 
     };
   } catch (error: any) {
     console.error('Signup error:', error);
-    if (error.message.includes('already registered')) {
-      throw new Error('An account with this email already exists');
-    }
-    throw new Error(error.message || 'Failed to sign up');
+    toast.error(error.message || 'Failed to sign up');
+    throw error;
   }
 }
 
@@ -89,14 +58,32 @@ export async function signIn(email: string, password: string) {
     });
 
     if (error) throw error;
-    return data;
+
+    // Get user profile data
+    const { data: profile } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
+    return {
+      user: { ...data.user, ...profile },
+      session: data.session
+    };
   } catch (error: any) {
     console.error('Sign in error:', error);
-    throw new Error(error.message || 'Failed to sign in');
+    toast.error('Invalid email or password');
+    throw error;
   }
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  } catch (error: any) {
+    console.error('Sign out error:', error);
+    toast.error('Failed to sign out');
+    throw error;
+  }
 }
