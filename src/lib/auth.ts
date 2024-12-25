@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { toast } from 'react-hot-toast';
+import { database } from './database';
 
 export async function signUp(data: {
   email: string;
@@ -9,39 +10,43 @@ export async function signUp(data: {
   phoneNumber: string;
 }) {
   try {
-    // Check if this is the first user
-    const { count } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true });
-    
-    const isAdmin = count === 0;
+    // Check if any users exist
+    const userCount = await database.countUsers();
+    const isAdmin = userCount === 0;
 
     // Sign up with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
-      password: data.password
+      password: data.password,
+      options: {
+        data: {
+          username: data.username,
+          name: data.name,
+          role: isAdmin ? 'admin' : 'user'
+        }
+      }
     });
 
     if (authError) throw authError;
     if (!authData.user) throw new Error('No user data returned');
 
-    // Insert into users table
-    const { error: profileError } = await supabase
-      .from('users')
-      .insert([{
-        id: authData.user.id,
-        email: data.email,
-        username: data.username,
-        name: data.name,
-        phone_number: data.phoneNumber,
-        role: isAdmin ? 'admin' : 'user'
-      }]);
+    // Create user profile
+    const userData = await database.createUser({
+      id: authData.user.id,
+      email: data.email,
+      username: data.username,
+      name: data.name,
+      phone_number: data.phoneNumber,
+      role: isAdmin ? 'admin' : 'user'
+    });
 
-    if (profileError) throw profileError;
-
-    return { 
-      user: authData.user,
-      session: authData.session 
+    return {
+      user: {
+        ...authData.user,
+        ...userData
+      },
+      session: authData.session,
+      isAdmin
     };
   } catch (error: any) {
     console.error('Signup error:', error);
@@ -60,11 +65,13 @@ export async function signIn(email: string, password: string) {
     if (error) throw error;
 
     // Get user profile data
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('*')
       .eq('id', data.user.id)
       .single();
+
+    if (profileError) throw profileError;
 
     return {
       user: { ...data.user, ...profile },
@@ -85,5 +92,15 @@ export async function signOut() {
     console.error('Sign out error:', error);
     toast.error('Failed to sign out');
     throw error;
+  }
+}
+
+export async function checkAdminExists() {
+  try {
+    const adminCount = await database.countAdmins();
+    return adminCount > 0;
+  } catch (error: any) {
+    console.error('Check admin error:', error);
+    return false;
   }
 }

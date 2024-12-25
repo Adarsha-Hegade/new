@@ -1,22 +1,36 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import SignupForm from '../components/auth/SignupForm';
+import { checkAdminExists } from '../lib/auth';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export default function SignupPage() {
+  const [adminExists, setAdminExists] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const exists = await checkAdminExists();
+      setAdminExists(exists);
+    };
+    checkAdmin();
+  }, []);
+
+  if (adminExists === null) {
+    return <LoadingSpinner />;
+  }
+
+  if (adminExists) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Create your account
+          Create Admin Account
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link
-            to="/login"
-            className="font-medium text-blue-600 hover:text-blue-500"
-          >
-            Sign in
-          </Link>
+          This will be the administrator account for the system
         </p>
       </div>
 
